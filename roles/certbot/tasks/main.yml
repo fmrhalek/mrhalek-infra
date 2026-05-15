@@ -1,4 +1,7 @@
 ---
+- name: Flush handlers so nginx reload (pending from nginx role) fires before cert request
+  ansible.builtin.meta: flush_handlers
+
 - name: Install certbot via snap
   community.general.snap:
     name: certbot
