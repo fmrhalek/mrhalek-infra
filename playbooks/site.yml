@@ -1,0 +1,12 @@
+---
+- name: Configure web server
+  hosts: web
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - docker
+    - motion_site
+    - nginx
+    - certbot

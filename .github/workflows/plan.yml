@@ -1,0 +1,72 @@
+name: Plan (ansible --check --diff)
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install --no-cache-dir ansible-core
+
+      - name: Install Galaxy collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Configure SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          echo "$ANSIBLE_SSH_KEY" > ~/.ssh/ansible-admin
+          chmod 600 ~/.ssh/ansible-admin
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+        env:
+          ANSIBLE_SSH_KEY: ${{ secrets.ANSIBLE_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+
+      - name: Ansible check + diff
+        id: check
+        run: |
+          set +e
+          ansible-playbook playbooks/site.yml --check --diff > plan_output.txt 2>&1
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          cat plan_output.txt
+          exit 0
+
+      - name: Post plan as PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ansible-plan
+          message: |
+            ### Ansible plan (`--check --diff`)
+
+            Exit code: `${{ steps.check.outputs.exit_code }}`
+
+            <details><summary>Show diff</summary>
+
+            ```diff
+            $(tail -c 60000 plan_output.txt)
+            ```
+
+            </details>
+          path: plan_output.txt
+
+      - name: Fail if plan errored
+        if: steps.check.outputs.exit_code != '0'
+        run: exit 1

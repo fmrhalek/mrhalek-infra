@@ -1,0 +1,45 @@
+name: Apply (ansible-playbook)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://mrhalek.xyz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install --no-cache-dir ansible-core
+
+      - name: Install Galaxy collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Configure SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          echo "$ANSIBLE_SSH_KEY" > ~/.ssh/ansible-admin
+          chmod 600 ~/.ssh/ansible-admin
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+        env:
+          ANSIBLE_SSH_KEY: ${{ secrets.ANSIBLE_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+
+      - name: Ansible apply
+        run: ansible-playbook playbooks/site.yml -v

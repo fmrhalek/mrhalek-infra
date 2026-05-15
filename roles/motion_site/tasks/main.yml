@@ -1,0 +1,22 @@
+---
+- name: Create motion-site directory
+  ansible.builtin.file:
+    path: "{{ motion_site_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+
+- name: Install deploy public key for ubuntu user
+  ansible.posix.authorized_key:
+    user: ubuntu
+    key: "{{ motion_site_deploy_public_key }}"
+    state: present
+
+- name: Create webroot for ACME HTTP-01 challenges
+  ansible.builtin.file:
+    path: /var/www/letsencrypt
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"

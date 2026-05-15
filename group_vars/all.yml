@@ -1,0 +1,11 @@
+---
+domain: mrhalek.xyz
+domain_aliases:
+  - www.mrhalek.xyz
+
+certbot_email: filip.mrhalek@packeta.com
+
+motion_site_dir: /home/ubuntu/motion-site
+motion_site_container_port: 3000
+
+motion_site_deploy_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE10nV0czpnArDABuYkbtWeEjsHdUVgavoNETdPTRTGI github-actions-motion-site-deploy"

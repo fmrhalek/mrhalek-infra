@@ -1,0 +1,6 @@
+all:
+  hosts:
+    web:
+      ansible_host: 3.125.221.7
+      ansible_user: ubuntu
+      ansible_ssh_private_key_file: ~/.ssh/ansible-admin

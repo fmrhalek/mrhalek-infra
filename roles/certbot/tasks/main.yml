@@ -1,0 +1,42 @@
+---
+- name: Install certbot via snap
+  community.general.snap:
+    name: certbot
+    classic: true
+    state: present
+
+- name: Symlink certbot into PATH
+  ansible.builtin.file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link
+    force: true
+
+- name: Check if cert already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain }}/fullchain.pem"
+  register: existing_cert
+
+- name: Issue cert via certbot (webroot, idempotent)
+  ansible.builtin.command:
+    cmd: >
+      certbot certonly --webroot
+      -w /var/www/letsencrypt
+      -d {{ domain }}
+      {% for d in domain_aliases %}-d {{ d }} {% endfor %}
+      --email {{ certbot_email }}
+      --agree-tos --non-interactive --no-eff-email
+      --keep-until-expiring
+  when: not existing_cert.stat.exists
+  register: certbot_run
+  changed_when: "'Successfully received certificate' in certbot_run.stdout"
+  notify: reload nginx after cert
+  # If this fails, it's typically because DNS hasn't propagated yet.
+  # Re-run the playbook after DNS resolves and the cert will be issued.
+
+- name: Ensure renewal timer is enabled (snap provides it)
+  ansible.builtin.systemd:
+    name: snap.certbot.renew.timer
+    enabled: true
+    state: started
+  failed_when: false
